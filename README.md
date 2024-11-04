@@ -18,6 +18,8 @@ You can remove the inserted `my_ops` module by running the following command:
 $ make rmmod
 ```
 
+Once you insert the `my_ops` module, you can attach a custom BPF program to the `gops` defined in it. For more details, refer to [bpf/README.md](bpf/README.md).
+
 # Q&A
 
 If you encounter the following warning message during the build:
