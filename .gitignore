@@ -1,0 +1,10 @@
+*.o
+*.ko
+
+*.cmd
+*.mod*
+
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
