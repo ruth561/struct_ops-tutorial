@@ -9,6 +9,7 @@ u64 BPF_PROG(my_ops_calculate, u64 n)
 	u64 retval;
 
 	retval = n * n;
+	bpf_printk("calculate(%d) -> %d", n, retval);
 	return retval;
 }
 

@@ -62,11 +62,29 @@ static bool my_ops_is_valid_access(int off, int size,
 }
 
 /*
+ * bpf_base_func_proto allows BPF programs to use certain basic BPF helper functions,
+ * such as bpf_printk. However, it does not support all BPF helper functions.
+ * If you need to use additional BPF helper functions, such as bpf_event_output_data,
+ * you must implement the necesary enabling process.
+ *
+ * For more details, refer to the implementation of bpf_base_func_proto.
+ *
+ * NOTE: bpf_base_func_proto is not exported to LKMs until v6.12-rc1.
+ * Therefore, it cannot be used with kernel versions earlier than v6.12.
+ */
+static const struct bpf_func_proto *my_ops_get_func_proto(enum bpf_func_id func_id,
+							  const struct bpf_prog *prog)
+{
+	return bpf_base_func_proto(func_id, prog);
+}
+
+/*
  * We only implement is_valid_access, so BPF programs attached to my_ops cannot
  * invoke any BPF helper functions. If you want to enable specific BPF helpers,
  * you should implements .get_func_proto.
  */
 static struct bpf_verifier_ops my_ops_bpf_verifier_ops = {
+	.get_func_proto  = my_ops_get_func_proto,
 	.is_valid_access = my_ops_is_valid_access,
 };
 

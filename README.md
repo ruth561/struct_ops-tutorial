@@ -1,3 +1,8 @@
+# Prerequisites
+
+The kernel version v6.12-rc1 or higher is required.
+If you attempt to build this project with Linux Kernel v6.11 or earlier, the build will fail because certain kernel functions related to BPF (e.g., `bpf_base_func_proto`) are not exported to loadable kernel modules (LKMs).
+
 # How to build
 
 ```
