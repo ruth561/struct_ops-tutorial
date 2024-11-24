@@ -10,7 +10,9 @@ all: $(TARGET)
 
 .PHONY: run
 run: $(TARGET)
+	sudo dmesg -C
 	sudo $(TARGET)
+	sudo dmesg
 
 $(TARGET): $(SKELTON) $(APP_SRC)
 	cargo build
