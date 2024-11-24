@@ -20,6 +20,11 @@ $ make rmmod
 
 Once you insert the `my_ops` module, you can attach a custom BPF program to the `gops` defined in it. For more details, refer to [bpf/README.md](bpf/README.md).
 
+Or simply execute `run.sh` script:
+```
+$ ./run.sh
+```
+
 # Q&A
 
 If you encounter the following warning message during the build:
