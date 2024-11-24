@@ -56,7 +56,7 @@ static bool my_ops_is_valid_access(int off, int size,
 				   const struct bpf_prog *prog,
 				   struct bpf_insn_access_aux *info)
 {
-	if (off == 0 && size == sizeof(int))
+	if (off == 0 && size == sizeof(u64))
 		return true;
 	return false;
 }

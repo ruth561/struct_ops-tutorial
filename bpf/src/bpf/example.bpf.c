@@ -4,9 +4,12 @@
 char LICENSE[] SEC("license") = "GPL";
 
 SEC("struct_ops/my_ops_calculate")
-int BPF_PROG(my_ops_calculate, int n)
+u64 BPF_PROG(my_ops_calculate, u64 n)
 {
-	return 1729;
+	u64 retval;
+
+	retval = n * n;
+	return retval;
 }
 
 SEC(".struct_ops.link")
