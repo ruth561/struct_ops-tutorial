@@ -79,6 +79,7 @@ dependencies = [
  "ctrlc",
  "libbpf-cargo",
  "libbpf-rs",
+ "libbpf-sys",
 ]
 
 [[package]]

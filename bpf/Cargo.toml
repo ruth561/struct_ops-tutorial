@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+libbpf-sys = "=1.5.0"
 libbpf-rs = "0.24.6"
 ctrlc = "3.4"
 
