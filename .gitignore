@@ -8,3 +8,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+mnt/
+*.img
+
+.gdbinit
+.gdb_history

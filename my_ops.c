@@ -166,6 +166,7 @@ static int bpf_my_ops_reg(void *kdata, struct bpf_link *link)
 static void bpf_my_ops_unreg(void *kdata, struct bpf_link *link)
 {
 	pr_info("st_ops->unreg()\n");
+	gops.calculate = NULL;
 }
 
 /*
