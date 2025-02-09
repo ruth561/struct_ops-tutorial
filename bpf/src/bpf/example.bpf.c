@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "my_ops.h"
+#include "my_ops_kfuncs.bpf.h"
 #include <bpf/bpf_tracing.h>
 char LICENSE[] SEC("license") = "GPL";
 
@@ -16,6 +17,9 @@ u64 BPF_PROG(my_ops_calculate, u64 n)
 	retval += cnt;
 	
 	bpf_printk("calculate(%d) -> %d", n, retval);
+
+	my_ops_log("THIS IS TEST!\n");
+
 	return retval;
 }
 

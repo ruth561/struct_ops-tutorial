@@ -196,6 +196,36 @@ static struct bpf_struct_ops bpf_my_ops = {
 	.cfi_stubs	= &my_ops_stubs,
 };
 
+/*
+ * Kfunc definitions are implemented between __bpf_kfunc_start_defs()
+ * and __bpf_kfunc_end_defs().
+ * Each kfunc definition must be prefixed with __bpf_kfunc.
+ */
+__bpf_kfunc_start_defs();
+
+/**
+ * my_ops_log - Logs messages to the dmesg buffer.
+ * @s__str: String to be logged to the dmesg buffer.
+ */
+__bpf_kfunc void my_ops_log(const char *s__str)
+{
+	pr_info("my_ops: %s", s__str);
+}
+
+__bpf_kfunc_end_defs();
+
+/*
+ * Set flags to kfuncs, such as KF_*.
+ */
+BTF_KFUNCS_START(my_ops_kfunc_ids)
+BTF_ID_FLAGS(func, my_ops_log)
+BTF_KFUNCS_END(my_ops_kfunc_ids)
+
+static const struct btf_kfunc_id_set my_ops_kfunc_set = {
+	.owner	= THIS_MODULE,
+	.set	= &my_ops_kfunc_ids,
+};
+
 // =============================================================================
 // The following implementations are for files in sysfs:my_ops.
 // =============================================================================
@@ -253,6 +283,12 @@ static int __init my_ops_init(void)
 	err = sysfs_create_file(my_ops_kobj, &ctl_attr.attr);
 	if (err) {
 		pr_err("failed to create file sysfs:my_ops/ctl\n");
+		return err;
+	}
+
+	err = register_btf_kfunc_id_set(BPF_PROG_TYPE_STRUCT_OPS, &my_ops_kfunc_set);
+	if (err) {
+		pr_err("failed to register kfuncs (%d)\n", err);
 		return err;
 	}
 
