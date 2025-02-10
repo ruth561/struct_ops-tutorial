@@ -3,6 +3,7 @@ HEADER		:= src/bpf/my_ops.h
 HEADER_SRC	:= /sys/kernel/btf/my_ops
 SKELTON		:= src/bpf/example.skel.rs
 BPF_SRC		:= src/bpf/example.bpf.c
+BPF_SRC		+= src/bpf/my_ops_kfuncs.bpf.h
 APP_SRC		:= src/main.rs
 
 .PHONY: all

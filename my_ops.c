@@ -4,6 +4,8 @@
 #include <linux/module.h>
 #include <linux/bpf.h>
 
+#include "bpf_graph.h"
+
 MODULE_AUTHOR("Takumi Jin");
 MODULE_DESCRIPTION("A simple implementation of a kernel module using struct_ops");
 MODULE_LICENSE("GPL v2");
@@ -196,6 +198,99 @@ static struct bpf_struct_ops bpf_my_ops = {
 	.cfi_stubs	= &my_ops_stubs,
 };
 
+// MARK: fixed_vector
+/*********************************************************************
+ * The definition of fixed_vector_*
+ */
+
+/*
+ * Initializes an instance of fixed_vector_u32.
+ */
+static inline void fixed_vector_u32_init(struct fixed_vector_u32 *fv)
+{
+	fv->len = 0;
+	fv->cap = FIXED_VECTOR_CAPACITY;
+}
+
+static inline u32 fixed_vector_u32_get(struct fixed_vector_u32 *fv, u32 i)
+{
+	if (0 <= i && i < fv->len) {
+		return fv->buf[i];
+	} else {
+		WARN_ON_ONCE(false);
+		return 0;
+	}
+}
+
+static inline s32 fixed_vector_u32_push_back(struct fixed_vector_u32 *fv, u32 val)
+{
+	if (fv->len == fv->cap) {
+		return -1;
+	}
+
+	fv->buf[fv->len++] = val;
+	return 0;
+}
+
+static inline void fixed_vector_u32_pop_back(struct fixed_vector_u32 *fv)
+{
+	if (fv->len == 0) {
+		return;
+	}
+
+	fv->len--;
+	return;
+}
+
+// MARK: bpf_graph
+/*********************************************************************
+ * The definition of bpf_graph
+ */
+
+/*
+ * The maximum number of bpf_graph instances.
+ */
+#define BPF_GRAPH_MAX_NR_GRAPHS	10
+
+struct bpf_graph_manager {
+	u32			nr_graphs;
+	bool			inuse[BPF_GRAPH_MAX_NR_GRAPHS];
+	struct bpf_graph	graphs[BPF_GRAPH_MAX_NR_GRAPHS];
+};
+
+/*
+ * This global variable manages all bpf_graph instances used throughout the system.
+ * TODO: Protect with mutual exclusion.
+ */
+static struct bpf_graph_manager bpf_graph_manager;
+
+static void bpf_graph_manager_init(void)
+{
+	bpf_graph_manager.nr_graphs = 0;
+	for (int i = 0; i < BPF_GRAPH_MAX_NR_GRAPHS; i++) {
+		bpf_graph_manager.inuse[i] = false;
+	}
+}
+
+/*
+ * Initializes the bpf_graph data structure.
+ */
+static inline void bpf_graph_init(struct bpf_graph *graph, u32 nr_nodes)
+{
+	graph->n = nr_nodes;
+	graph->m = 0;
+	for (int i = 0; i < nr_nodes; i++) {
+		graph->edges[i].len = 0;
+		graph->edges[i].cap = BPF_GRAPH_MAX_NODES;
+		fixed_vector_u32_init(&graph->edges[i]);
+	}
+}
+
+// MARK: kfuncs
+/*********************************************************************
+ * The difinition of kfuncs
+ */
+
 /*
  * Kfunc definitions are implemented between __bpf_kfunc_start_defs()
  * and __bpf_kfunc_end_defs().
@@ -212,6 +307,54 @@ __bpf_kfunc void my_ops_log(const char *s__str)
 	pr_info("my_ops: %s", s__str);
 }
 
+/**
+ * bpf_graph_alloc - Allocates a bpf_graph instance.
+ * @nr_nodes: The number of nodes in the graph.
+ *
+ * This kfunc allocates a bpf_graph instance for an eBPF program from
+ * `bpf_graph_manager`. The allocated instance must be freed using
+ * `bpf_graph_free` after use.
+ */
+__bpf_kfunc struct bpf_graph *bpf_graph_alloc(u32 nr_nodes)
+{
+	struct bpf_graph *graph = NULL;
+
+	if (bpf_graph_manager.nr_graphs >= BPF_GRAPH_MAX_NR_GRAPHS) {
+		pr_err("my_ops: bpf_graph_alloc: Graph is full, cannot allocate more.");
+		return NULL;
+	}
+
+	for (int i = 0; i < BPF_GRAPH_MAX_NR_GRAPHS; i++) {
+		if (!bpf_graph_manager.inuse[i]) {
+			graph = &bpf_graph_manager.graphs[i];
+			bpf_graph_manager.inuse[i] = true;
+			bpf_graph_manager.nr_graphs++;
+			break;
+		}
+	}
+	WARN_ON_ONCE(!graph);
+	bpf_graph_init(graph, nr_nodes);
+	return graph;
+}
+
+/**
+ * bpf_graph_free - Frees a bpf_graph instance.
+ * @graph: The bpf_graph instance to be freed. It must have been allocated
+ * using `bpf_graph_alloc` before calling this function.
+ */
+__bpf_kfunc void bpf_graph_free(struct bpf_graph *graph)
+{
+	s32 i;
+
+	WARN_ON_ONCE(!graph);
+
+	i = graph - &bpf_graph_manager.graphs[0];
+	WARN_ON_ONCE(!(0 <= i && i < bpf_graph_manager.nr_graphs));
+	WARN_ON_ONCE(!bpf_graph_manager.inuse[i]);
+	bpf_graph_manager.inuse[i] = false;
+	bpf_graph_manager.nr_graphs--;
+}
+
 __bpf_kfunc_end_defs();
 
 /*
@@ -219,6 +362,8 @@ __bpf_kfunc_end_defs();
  */
 BTF_KFUNCS_START(my_ops_kfunc_ids)
 BTF_ID_FLAGS(func, my_ops_log)
+BTF_ID_FLAGS(func, bpf_graph_alloc, KF_ACQUIRE | KF_RET_NULL)
+BTF_ID_FLAGS(func, bpf_graph_free, KF_RELEASE)
 BTF_KFUNCS_END(my_ops_kfunc_ids)
 
 static const struct btf_kfunc_id_set my_ops_kfunc_set = {
@@ -285,6 +430,8 @@ static int __init my_ops_init(void)
 		pr_err("failed to create file sysfs:my_ops/ctl\n");
 		return err;
 	}
+
+	bpf_graph_manager_init();
 
 	err = register_btf_kfunc_id_set(BPF_PROG_TYPE_STRUCT_OPS, &my_ops_kfunc_set);
 	if (err) {
