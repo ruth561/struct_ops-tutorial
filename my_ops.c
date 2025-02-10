@@ -242,6 +242,26 @@ static inline void fixed_vector_u32_pop_back(struct fixed_vector_u32 *fv)
 	return;
 }
 
+/*
+ * full - Returns true if @fv is full, otherwise returns false.
+ */
+static inline bool fixed_vector_u32_full(struct fixed_vector_u32 *fv)
+{
+	return fv->len == fv->cap;
+}
+
+/*
+ * contains - Returns true if @fv contains @val, otherwise returns false.
+ */
+static inline bool fixed_vector_u32_contains(struct fixed_vector_u32 *fv, u32 val)
+{
+	for (u32 i = 0; i < fv->len; i++) {
+		if (fv->buf[i] == val)
+			return true;
+	}
+	return false;
+}
+
 // MARK: bpf_graph
 /*********************************************************************
  * The definition of bpf_graph
@@ -338,6 +358,59 @@ __bpf_kfunc struct bpf_graph *bpf_graph_alloc(u32 nr_nodes)
 }
 
 /**
+ * bpf_graph_add_edge - Adds an edge to a bpf_graph
+ * @graph: The bpf_graph instance to which the edge will be added.
+ * @from: The source node of the edge.
+ * @to: The destination node of the edge.
+ *
+ * Return values:
+ *   -  0: Edge successfully added.
+ *   -  1: Edge already exists.
+ *   - -1: Error occurred.
+ */
+__bpf_kfunc s32 bpf_graph_add_edge(struct bpf_graph * graph, u32 from, u32 to)
+{
+	s32 err;
+
+	if (graph->n <= from) {
+		pr_warn("bpf_graph_add_edge: from(=%u) is not a valid graph node number\n", from);
+		return -EINVAL;
+	}
+	
+	if (graph->n <= to) {
+		pr_warn("bpf_graph_add_edge: to(=%u) is not a valid graph node number\n", from);
+		return -EINVAL;
+	}
+
+	if (fixed_vector_u32_contains(&graph->edges[from], to)) {
+		return 1;
+	}
+
+	WARN_ON_ONCE(fixed_vector_u32_full(&graph->edges[from]));
+	err = fixed_vector_u32_push_back(&graph->edges[from], to);
+	WARN_ON_ONCE(err);
+	graph->m++;
+	return 0;
+}
+
+/**
+ * bpf_graph_dump - Dumps and logs the bpf_graph to the dmesg buffer.
+ * @graph: The bpf_graph instance to be dumped.
+ */
+__bpf_kfunc void bpf_graph_dump(struct bpf_graph * graph)
+{
+	pr_info("[*] bpf_graph_dump\n");
+	for (u32 from = 0; from < graph->n; from++) {
+		struct fixed_vector_u32 *edges = &graph->edges[from];
+		for (u32 i = 0; i < edges->len; i++) {
+			u32 to = fixed_vector_u32_get(edges, i);
+			pr_info("%u -> %u", from, to);
+		}
+	}
+	pr_info("== fin ==\n");
+}
+
+/**
  * bpf_graph_free - Frees a bpf_graph instance.
  * @graph: The bpf_graph instance to be freed. It must have been allocated
  * using `bpf_graph_alloc` before calling this function.
@@ -364,6 +437,8 @@ BTF_KFUNCS_START(my_ops_kfunc_ids)
 BTF_ID_FLAGS(func, my_ops_log)
 BTF_ID_FLAGS(func, bpf_graph_alloc, KF_ACQUIRE | KF_RET_NULL)
 BTF_ID_FLAGS(func, bpf_graph_free, KF_RELEASE)
+BTF_ID_FLAGS(func, bpf_graph_add_edge)
+BTF_ID_FLAGS(func, bpf_graph_dump)
 BTF_KFUNCS_END(my_ops_kfunc_ids)
 
 static const struct btf_kfunc_id_set my_ops_kfunc_set = {

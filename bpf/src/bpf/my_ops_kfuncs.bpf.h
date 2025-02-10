@@ -30,5 +30,7 @@ struct bpf_graph {
 extern void my_ops_log(const char *) __weak __ksym;
 extern struct bpf_graph *bpf_graph_alloc(u32 nr_nodes) __weak __ksym;
 extern void bpf_graph_free(struct bpf_graph *graph) __weak __ksym;
+extern s32 bpf_graph_add_edge(struct bpf_graph * graph, u32 from, u32 to) __weak __ksym;
+extern void bpf_graph_dump(struct bpf_graph * graph) __weak __ksym;
 
 #endif /* __MY_OPS_KFUNCS_H */
