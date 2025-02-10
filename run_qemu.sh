@@ -11,6 +11,7 @@ fi
 sudo mount rootfs.img mnt
 
 sudo cp my_ops.ko mnt/root/
+sudo cp run_test.sh mnt/root/
 sudo cp bpf/target/debug/bpf mnt/root/
 
 sudo umount mnt
