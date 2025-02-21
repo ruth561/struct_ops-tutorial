@@ -1,4 +1,5 @@
 target/
+.cache/
 
 src/bpf/mod.rs
 src/bpf/example.skel.rs

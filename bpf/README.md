@@ -2,6 +2,21 @@
 
 This directory contains an example BPF program designed to attach to `struct my_ops`.
 
+# Prerequisites
+
+Before building, you must install `libbpf-cargo`:
+
+```
+$ cargo install libbpf-cargo
+```
+
+Additionally, you must load *my_ops.ko* beforehand, as we need to retrieve the data structure used in *my_ops.ko* from `/sys/kernel/btf/my_ops`. Switch to the parent directory and run the following command:
+
+```
+$ cd ..
+$ make insmod
+```
+
 # How to build
 
 To build the program, run:
@@ -11,8 +26,6 @@ $ make
 ```
 
 # How to use
-
-**Note**: You must first load *my_ops.ko*, which is built in the top-level directory.
 
 After building this crate, the binary will be available at *target/debug/bpf*. To load the example BPF program, use the following commands:
 
